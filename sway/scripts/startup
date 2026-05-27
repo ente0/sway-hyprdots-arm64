@@ -16,14 +16,20 @@ export SSH_AUTH_SOCK
 # Polkit agent
 /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1 &
 
-# Wallpaper daemon
+# Wallpaper daemon — wait until it's actually listening, then set an image.
 swww-daemon &
-sleep 0.3
-# Restore last wallpaper if any
-if [[ -d "$HOME/.config/backgrounds" ]]; then
-	wall=$(find "$HOME/.config/backgrounds" -type f \( -iname '*.jpg' -o -iname '*.png' -o -iname '*.jpeg' \) | shuf -n1)
-	[[ -n "$wall" ]] && swww img "$wall" --transition-type any &
-fi
+(
+	for _ in 1 2 3 4 5 6 7 8 9 10; do
+		swww query >/dev/null 2>&1 && break
+		sleep 0.3
+	done
+	# Search common wallpaper locations in priority order.
+	for d in "$HOME/.config/backgrounds" "$HOME/.config/sway/wallpapers" "$HOME/Pictures/Wallpapers"; do
+		[[ -d "$d" ]] || continue
+		wall=$(find "$d" -maxdepth 3 -type f \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \) 2>/dev/null | shuf -n1)
+		[[ -n "$wall" ]] && swww img "$wall" --transition-type any && break
+	done
+) &
 
 # GTK themes
 ~/.config/sway/scripts/gtkthemes &

@@ -2,7 +2,8 @@
 
 # Set the directory where the backgrounds are stored
 BACKGROUND_DIR="$HOME/.config/backgrounds"
-CURRENT_BACKGROUND_FILE="$HOME/.config/sway/env/.current_background"
+CURRENT_BACKGROUND_FILE="$HOME/.config/sway/.current_background"
+mkdir -p "$(dirname "$CURRENT_BACKGROUND_FILE")"
 
 # Get the list of backgrounds
 BACKGROUND_LIST=("$BACKGROUND_DIR"/*)

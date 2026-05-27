@@ -260,7 +260,7 @@
   },
   "custom/power": {
     "format": "⏻",
-    "on-click": "nwgbar",
+    "on-click": "~/.config/sway/scripts/wlogout",
     "tooltip": false
   },
   "custom/keyboard-layout": {
