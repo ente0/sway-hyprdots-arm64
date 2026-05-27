@@ -63,6 +63,17 @@ aur_install() {
 	done
 }
 
+# wlogout declares arch=('x86_64') but compiles fine on aarch64.
+install_wlogout_arm() {
+	if pacman -Qi wlogout &>/dev/null; then return; fi
+	echo "  [arm64 patch] building wlogout from AUR source..."
+	local tmp; tmp=$(mktemp -d)
+	git clone https://aur.archlinux.org/wlogout.git "$tmp/wlogout"
+	sed -i "s/arch=('x86_64')/arch=('x86_64' 'aarch64')/" "$tmp/wlogout/PKGBUILD"
+	(cd "$tmp/wlogout" && makepkg -si --noconfirm --ignorearch)
+	rm -rf "$tmp"
+}
+
 # --- Official repos -------------------------------------------------------
 # Everything here is available in [extra]/[community] for aarch64 via the
 # Arch Linux ARM repos that EndeavourOS ARM inherits.
@@ -77,7 +88,7 @@ pac_install \
 	pavucontrol \
 	pipewire wireplumber pipewire-pulse pipewire-alsa \
 	networkmanager network-manager-applet \
-	bluez bluez-utils blueberry \
+	bluez bluez-utils blueman \
 	thunar geany \
 	xdg-user-dirs xdg-desktop-portal-wlr \
 	gnome-keyring polkit-gnome \
@@ -93,6 +104,8 @@ pac_install \
 # wofi-emoji and rofi-emoji for the emoji picker keybind.
 # NOTE: hyprpicker dropped on purpose — see PORTING_NOTES.md.
 echo "[*] Installing AUR packages via yay"
+install_wlogout_arm
+
 aur_install \
 	swayfx \
 	swaylock-effects \
