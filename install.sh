@@ -110,6 +110,7 @@ echo "[*] Installing AUR packages via yay"
 # Build order matters: scenefx0.4 is a swayfx dep.
 aur_build_ignorearch wlogout
 aur_build_ignorearch scenefx0.4
+aur_build_ignorearch swww
 # swayfx provides sway → remove the base package first to avoid a conflict.
 if pacman -Qi sway &>/dev/null && ! pacman -Qi swayfx &>/dev/null; then
 	echo "[*] Removing 'sway' to make room for 'swayfx' (provides sway)"
@@ -131,7 +132,6 @@ fi
 
 aur_install \
 	swaylock-effects \
-	swww \
 	rofi-wayland \
 	rose-pine-cursor \
 	nwg-look \
