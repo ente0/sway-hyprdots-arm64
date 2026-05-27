@@ -91,11 +91,11 @@ pac_install \
 	pipewire wireplumber pipewire-pulse pipewire-alsa \
 	networkmanager network-manager-applet \
 	bluez bluez-utils blueman \
-	thunar geany \
+	dolphin geany \
 	xdg-user-dirs xdg-desktop-portal-wlr \
 	gnome-keyring polkit-gnome \
 	mpd mpc cava btop \
-	fastfetch fish micro \
+	fastfetch fish nano \
 	ttf-jetbrains-mono-nerd ttf-font-awesome ttf-nerd-fonts-symbols ttf-nerd-fonts-symbols-mono awesome-terminal-fonts noto-fonts noto-fonts-emoji \
 	qt5-wayland qt6-wayland \
 	gtk3 gtk4
@@ -178,37 +178,38 @@ fi
 echo "[*] Installing SDDM greeter"
 pac_install sddm qt5-quickcontrols2 qt5-graphicaleffects qt5-svg
 
-# Detect any already-installed catppuccin macchiato theme variant.
-THEME_NAME=''
-for candidate in catppuccin-macchiato catppuccin-macchiato-mauve \
-                 catppuccin-Macchiato Catppuccin-Macchiato; do
-	[[ -d "/usr/share/sddm/themes/$candidate" ]] && { THEME_NAME="$candidate"; break; }
+# Use sddm-astronaut-theme — ships Main.qml at root + a catppuccin-macchiato
+# variant. Self-contained, no build step, works on aarch64 (pure QML).
+THEME_NAME='sddm-astronaut-theme'
+THEME_DIR="/usr/share/sddm/themes/$THEME_NAME"
+ASTRONAUT_VARIANT='catppuccin-macchiato'
+
+# Clean up previous broken installs from earlier install.sh iterations.
+for old in /usr/share/sddm/themes/catppuccin-macchiato \
+           /usr/share/sddm/themes/catppuccin-macchiato-mauve; do
+	if [[ -d "$old" && ! -f "$old/Main.qml" ]]; then
+		echo "[*] Removing broken theme dir: $old"
+		sudo rm -rf "$old"
+	fi
 done
 
-if [[ -z "$THEME_NAME" ]]; then
-	echo "[*] Installing Catppuccin SDDM theme (macchiato) via git clone"
-	tmp=$(mktemp -d)
-	THEME_NAME='catppuccin-macchiato'
-	THEME_DIR="/usr/share/sddm/themes/$THEME_NAME"
-	if git clone --depth=1 https://github.com/catppuccin/sddm.git "$tmp/sddm"; then
-		sudo mkdir -p /usr/share/sddm/themes
-		# Try both known repo layouts.
-		if [[ -d "$tmp/sddm/src/catppuccin-macchiato" ]]; then
-			sudo cp -r "$tmp/sddm/src/catppuccin-macchiato" "$THEME_DIR"
-		elif [[ -d "$tmp/sddm/catppuccin-macchiato" ]]; then
-			sudo cp -r "$tmp/sddm/catppuccin-macchiato" "$THEME_DIR"
-		else
-			# Fallback: copy the whole repo as the theme dir
-			sudo cp -r "$tmp/sddm" "$THEME_DIR"
+if [[ ! -f "$THEME_DIR/Main.qml" ]]; then
+	echo "[*] Installing sddm-astronaut-theme (catppuccin-macchiato variant)"
+	sudo rm -rf "$THEME_DIR"
+	sudo mkdir -p /usr/share/sddm/themes
+	if sudo git clone --depth=1 \
+		https://github.com/Keyitdev/sddm-astronaut-theme.git "$THEME_DIR"; then
+		# Make selected variant the active one.
+		if [[ -f "$THEME_DIR/Themes/${ASTRONAUT_VARIANT}.conf" ]]; then
+			sudo cp "$THEME_DIR/Themes/${ASTRONAUT_VARIANT}.conf" "$THEME_DIR/theme.conf.user"
 		fi
-		echo "  theme installed at $THEME_DIR"
+		# Theme needs these Qt fonts to render correctly.
+		pac_install ttf-jetbrains-mono ttf-roboto ttf-roboto-mono
+		echo "  installed at $THEME_DIR"
 	else
-		echo "[!] Could not clone catppuccin/sddm — SDDM will use the default theme."
+		echo "[!] Could not install sddm-astronaut-theme — SDDM will use default."
 		THEME_NAME='breeze'
 	fi
-	rm -rf "$tmp"
-else
-	echo "[*] Catppuccin SDDM theme already present: $THEME_NAME"
 fi
 
 echo "[*] Writing /etc/sddm.conf.d/10-sway-hyprdots.conf"

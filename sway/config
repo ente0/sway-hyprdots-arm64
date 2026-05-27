@@ -18,10 +18,10 @@ set $backlight ~/.config/sway/scripts/brightness
 set $lockscreen ~/.config/sway/scripts/lockscreen
 set $colorpicker ~/.config/sway/scripts/colorpicker
 set $emojipicker wofi-emoji
-set $files thunar
+set $files dolphin
 set $editor geany
 set $browser brave
-set $cheatsheet foot --app-id='foot-float' --config="$HOME/.config/sway/foot/foot.ini" -t cheatsheet -e micro ~/.config/sway/cheatsheet.md
+set $cheatsheet foot --app-id='foot-float' --config="$HOME/.config/sway/foot/foot.ini" -t cheatsheet -e nano -v ~/.config/sway/cheatsheet.md
 set $background_swap ~/.config/sway/scripts/background
 set $screen_mode ~/.config/sway/scripts/screen
 set $notifycmd notify-send -h string:x-canonical-private-synchronous:sway-cfg -u low
@@ -31,6 +31,9 @@ include ~/.config/sway/config.d/theme.conf
 
 ### Output
 output * bg #1e2030 solid_color
+# Scale up the whole UI so widgets/text aren't tiny on the Pi5 4K HDMI output.
+# Change to 1.0 if your monitor is already low-DPI.
+output * scale 1.5
 # Default monitor — adjust per setup
 # output HDMI-A-1 mode 1920x1080@60Hz position 0 0
 
@@ -52,6 +55,10 @@ input "type:pointer" {
     pointer_accel 0.5
     accel_profile adaptive
 }
+
+### Default: all new windows float (user preference — non-tiling layout).
+for_window [app_id=".*"] floating enable
+for_window [class=".*"] floating enable
 
 ### Window rules — ported from Hyprland windowrules
 for_window [app_id="^(foot-float|kitty-float|term-float)$"] floating enable
