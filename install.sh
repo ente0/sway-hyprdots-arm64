@@ -85,7 +85,7 @@ pac_install \
 	waybar \
 	foot kitty alacritty \
 	rofi wofi mako wlogout \
-	grim slurp jq imagemagick wl-clipboard \
+	grim slurp jq imagemagick wl-clipboard unzip curl \
 	brightnessctl pamixer pulsemixer playerctl \
 	pavucontrol \
 	pipewire wireplumber pipewire-pulse pipewire-alsa \
@@ -165,41 +165,65 @@ Type=Application
 EOF
 fi
 
-# --- Autostart on TTY1 ----------------------------------------------------
-# Append a sway-launch snippet to the user's shell profile so sway starts
-# automatically right after a login on tty1 (no display manager needed).
-echo "[*] Setting up sway autostart on tty1"
-SNIPPET_MARK='# >>> sway autostart (sway-hyprdots-arm64) >>>'
-SNIPPET_END='# <<< sway autostart (sway-hyprdots-arm64) <<<'
-read -r -d '' SNIPPET <<'EOF' || true
-# >>> sway autostart (sway-hyprdots-arm64) >>>
-if [ -z "$WAYLAND_DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
-    export XDG_CURRENT_DESKTOP=sway
-    export XDG_SESSION_TYPE=wayland
-    export MOZ_ENABLE_WAYLAND=1
-    export QT_QPA_PLATFORM=wayland
-    export _JAVA_AWT_WM_NONREPARENTING=1
-    exec sway
+# --- SDDM greeter ---------------------------------------------------------
+# Install SDDM + Qt deps + a Catppuccin Macchiato theme, then enable the unit.
+# If a previous tty1-autostart block exists in the user's profile, remove it.
+echo "[*] Installing SDDM greeter"
+pac_install sddm qt5-quickcontrols2 qt5-graphicaleffects qt5-svg
+
+THEME_NAME='catppuccin-macchiato-mauve'
+THEME_DIR="/usr/share/sddm/themes/$THEME_NAME"
+if [[ ! -d "$THEME_DIR" ]]; then
+	echo "[*] Fetching Catppuccin SDDM theme (macchiato/mauve)"
+	tmp=$(mktemp -d)
+	# Official catppuccin/sddm release archive (architecture: any — pure QML).
+	if curl -fsSL -o "$tmp/theme.zip" \
+		"https://github.com/catppuccin/sddm/releases/latest/download/catppuccin-macchiato-mauve.zip"; then
+		sudo mkdir -p /usr/share/sddm/themes
+		( cd "$tmp" && unzip -q theme.zip && sudo cp -r catppuccin-macchiato-mauve "$THEME_DIR" )
+	else
+		echo "[!] Could not fetch Catppuccin SDDM theme; SDDM will use the default."
+	fi
+	rm -rf "$tmp"
 fi
-# <<< sway autostart (sway-hyprdots-arm64) <<<
+
+echo "[*] Writing /etc/sddm.conf.d/10-sway-hyprdots.conf"
+sudo mkdir -p /etc/sddm.conf.d
+sudo tee /etc/sddm.conf.d/10-sway-hyprdots.conf >/dev/null <<EOF
+[Theme]
+Current=$THEME_NAME
+CursorTheme=BreezeX-RoséPine
+CursorSize=24
+
+[General]
+DisplayServer=wayland
+GreeterEnvironment=QT_WAYLAND_SHELL_INTEGRATION=layer-shell
+
+[Wayland]
+SessionDir=/usr/share/wayland-sessions
 EOF
 
+# Drop any tty1 autostart block we wrote previously — SDDM owns the login now.
 for rc in "$HOME/.zprofile" "$HOME/.bash_profile" "$HOME/.profile"; do
-	# Pick the first one that already exists, else create ~/.bash_profile.
-	[[ -f "$rc" ]] && target="$rc" && break
+	[[ -f "$rc" ]] || continue
+	if grep -qF '# >>> sway autostart (sway-hyprdots-arm64) >>>' "$rc"; then
+		echo "[*] Removing old tty1 autostart block from $rc"
+		# Delete lines between the markers (inclusive). BSD/GNU sed compat.
+		sed -i.bak '/# >>> sway autostart (sway-hyprdots-arm64) >>>/,/# <<< sway autostart (sway-hyprdots-arm64) <<</d' "$rc" && rm -f "$rc.bak"
+	fi
 done
-target="${target:-$HOME/.bash_profile}"
-touch "$target"
-if ! grep -qF "$SNIPPET_MARK" "$target"; then
-	echo "$SNIPPET" >> "$target"
-	echo "    added autostart block to $target"
-else
-	echo "    autostart block already present in $target"
-fi
+
+# Enable SDDM, disable any conflicting DM that may be present.
+for other in lightdm gdm lxdm greetd; do
+	if systemctl is-enabled "$other" >/dev/null 2>&1; then
+		echo "[*] Disabling $other.service (replaced by SDDM)"
+		sudo systemctl disable "$other"
+	fi
+done
+sudo systemctl enable sddm.service
 
 echo
 echo "[*] Done."
-echo "Log out and pick the 'SwayFX (HyDE-ARM64)' session from your display manager,"
-echo "or run 'sway' from a TTY."
+echo "On reboot SDDM will start; pick 'SwayFX (HyDE-ARM64)' from the session menu."
 read -rp "Reboot now? (y/N) " ans
 [[ "$ans" =~ ^[Yy]$ ]] && sudo reboot now
