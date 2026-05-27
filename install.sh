@@ -96,6 +96,7 @@ pac_install \
 	gnome-keyring polkit-gnome \
 	mpd mpc cava btop \
 	fastfetch fish nano \
+	pacman-contrib \
 	ttf-jetbrains-mono-nerd ttf-font-awesome ttf-nerd-fonts-symbols ttf-nerd-fonts-symbols-mono awesome-terminal-fonts noto-fonts noto-fonts-emoji \
 	qt5-wayland qt6-wayland \
 	gtk3 gtk4
@@ -173,19 +174,17 @@ EOF
 fi
 
 # --- SDDM greeter ---------------------------------------------------------
-# Install SDDM + Qt deps + a Catppuccin Macchiato theme, then enable the unit.
-# If a previous tty1-autostart block exists in the user's profile, remove it.
+# Install SDDM + Qt deps + Catppuccin Macchiato theme, then enable the unit.
 echo "[*] Installing SDDM greeter"
-pac_install sddm qt5-quickcontrols2 qt5-graphicaleffects qt5-svg
+pac_install sddm qt5-quickcontrols2 qt5-graphicaleffects qt5-svg \
+	ttf-jetbrains-mono ttf-roboto
 
-# Use sddm-astronaut-theme — ships Main.qml at root + a catppuccin-macchiato
-# variant. Self-contained, no build step, works on aarch64 (pure QML).
-THEME_NAME='sddm-astronaut-theme'
+THEME_NAME='catppuccin-macchiato'
 THEME_DIR="/usr/share/sddm/themes/$THEME_NAME"
-ASTRONAUT_VARIANT='catppuccin-macchiato'
 
-# Clean up previous broken installs from earlier install.sh iterations.
-for old in /usr/share/sddm/themes/catppuccin-macchiato \
+# Remove any broken/leftover theme dirs from previous install iterations.
+for old in /usr/share/sddm/themes/sddm-astronaut-theme \
+           /usr/share/sddm/themes/catppuccin-macchiato \
            /usr/share/sddm/themes/catppuccin-macchiato-mauve; do
 	if [[ -d "$old" && ! -f "$old/Main.qml" ]]; then
 		echo "[*] Removing broken theme dir: $old"
@@ -194,20 +193,35 @@ for old in /usr/share/sddm/themes/catppuccin-macchiato \
 done
 
 if [[ ! -f "$THEME_DIR/Main.qml" ]]; then
-	echo "[*] Installing sddm-astronaut-theme (catppuccin-macchiato variant)"
-	sudo rm -rf "$THEME_DIR"
+	echo "[*] Installing Catppuccin SDDM theme (macchiato)"
 	sudo mkdir -p /usr/share/sddm/themes
-	if sudo git clone --depth=1 \
-		https://github.com/Keyitdev/sddm-astronaut-theme.git "$THEME_DIR"; then
-		# Make selected variant the active one.
-		if [[ -f "$THEME_DIR/Themes/${ASTRONAUT_VARIANT}.conf" ]]; then
-			sudo cp "$THEME_DIR/Themes/${ASTRONAUT_VARIANT}.conf" "$THEME_DIR/theme.conf.user"
+	tmp=$(mktemp -d)
+	if git clone --depth=1 https://github.com/catppuccin/sddm.git "$tmp/catppuccin-sddm"; then
+		# The repo has theme dirs directly at root (catppuccin-macchiato/)
+		# or in a src/ subdirectory — try both.
+		if [[ -f "$tmp/catppuccin-sddm/catppuccin-macchiato/Main.qml" ]]; then
+			sudo cp -r "$tmp/catppuccin-sddm/catppuccin-macchiato" "$THEME_DIR"
+		elif [[ -f "$tmp/catppuccin-sddm/src/catppuccin-macchiato/Main.qml" ]]; then
+			sudo cp -r "$tmp/catppuccin-sddm/src/catppuccin-macchiato" "$THEME_DIR"
+		else
+			# Fallback: find any directory containing Main.qml and macchiato in name
+			found=$(find "$tmp/catppuccin-sddm" -name 'Main.qml' | grep -i macchiato | head -1)
+			if [[ -n "$found" ]]; then
+				sudo cp -r "$(dirname "$found")" "$THEME_DIR"
+			else
+				echo "[!] Could not locate catppuccin-macchiato/Main.qml in the repo."
+				echo "    Repo contents:"
+				find "$tmp/catppuccin-sddm" -name 'Main.qml' | head -10
+				THEME_NAME='breeze'
+			fi
 		fi
-		# Theme needs these Qt fonts to render correctly.
-		pac_install ttf-jetbrains-mono ttf-roboto ttf-roboto-mono
-		echo "  installed at $THEME_DIR"
+		rm -rf "$tmp"
+		if [[ "$THEME_NAME" != 'breeze' ]]; then
+			echo "  installed at $THEME_DIR"
+		fi
 	else
-		echo "[!] Could not install sddm-astronaut-theme — SDDM will use default."
+		rm -rf "$tmp"
+		echo "[!] Could not clone catppuccin/sddm — SDDM will use default."
 		THEME_NAME='breeze'
 	fi
 fi
