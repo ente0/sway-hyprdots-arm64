@@ -96,7 +96,7 @@ pac_install \
 	gnome-keyring polkit-gnome \
 	mpd mpc cava btop \
 	fastfetch fish micro \
-	ttf-jetbrains-mono-nerd ttf-font-awesome noto-fonts \
+	ttf-jetbrains-mono-nerd ttf-font-awesome ttf-nerd-fonts-symbols ttf-nerd-fonts-symbols-mono awesome-terminal-fonts noto-fonts noto-fonts-emoji \
 	qt5-wayland qt6-wayland \
 	gtk3 gtk4
 
@@ -129,7 +129,9 @@ aur_install \
 	rose-pine-cursor \
 	nwg-look \
 	wofi-emoji \
-	oh-my-posh-bin
+	oh-my-posh-bin \
+	catppuccin-gtk-theme-macchiato \
+	tela-circle-icon-theme
 
 # --- Deploy configs -------------------------------------------------------
 echo "[*] Deploying configs to ~/.config"

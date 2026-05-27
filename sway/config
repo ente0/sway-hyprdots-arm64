@@ -79,13 +79,20 @@ bindsym --whole-window $mod+button2 resize
 ### Lid
 bindswitch --reload --locked lid:on exec $lockscreen
 
-### SwayFX-only — ignored on vanilla sway
-# blur enable
-# blur_passes 3
-# blur_radius 5
-# corner_radius 10
-# shadows enable
-# default_dim_inactive 0.1
+### SwayFX-only — silently ignored on vanilla sway
+blur enable
+blur_passes 2
+blur_radius 5
+corner_radius 10
+shadows enable
+shadow_blur_radius 20
+shadow_color #00000080
+default_dim_inactive 0.08
+# Per-app blur tuning
+layer_effects 'waybar'   blur enable; shadows enable
+layer_effects 'rofi'     blur enable; shadows enable
+layer_effects 'launcher' blur enable; shadows enable
+layer_effects 'notifications' blur enable; shadows enable
 
 ### Autostart
 exec ~/.config/sway/scripts/startup

@@ -1,24 +1,36 @@
 #!/usr/bin/env bash
+## Set GTK theme, icons, cursor, fonts. Falls back gracefully if a theme is missing.
 
-## Copyright (C) 2020-2023 Aditya Shakya <adi1090x@gmail.com>
-##
-## Set GTK Themes, Icons, Cursor and Fonts
-## Edited by @yurihikari
-
-THEME='catppuccin-macchiato-mauve-standard+default'
-ICONS='Tela-circle-purple-dark'
-FONT='Noto Sans 10'
-CURSOR='BreezeX-RoséPine'
-CURSOR_SIZE='32'
-
-SCHEMA='gsettings set org.gnome.desktop.interface'
-
-apply_themes () {
-	${SCHEMA} gtk-theme "$THEME"
-	${SCHEMA} icon-theme "$ICONS"
-	${SCHEMA} cursor-theme "$CURSOR"
-	${SCHEMA} font-name "$FONT"
-	${SCHEMA} cursor-size "$CURSOR_SIZE"
+pick_first_installed() {
+	local kind="$1"; shift
+	for name in "$@"; do
+		for base in "/usr/share/$kind" "$HOME/.$kind" "$HOME/.local/share/$kind"; do
+			[[ -d "$base/$name" ]] && { echo "$name"; return; }
+		done
+	done
+	echo "$1"
 }
 
-apply_themes
+THEME=$(pick_first_installed themes \
+	'Catppuccin-Macchiato-Standard-Mauve-Dark' \
+	'catppuccin-macchiato-mauve-standard+default' \
+	'Adwaita-dark')
+ICONS=$(pick_first_installed icons \
+	'Tela-circle-purple-dark' \
+	'Tela-circle-dark' \
+	'Papirus-Dark' \
+	'Adwaita')
+CURSOR=$(pick_first_installed icons \
+	'BreezeX-RoséPine' 'BreezeX-RosePine-Linux' 'rose-pine-cursor' \
+	'Adwaita')
+FONT='Noto Sans 10'
+CURSOR_SIZE='24'
+
+SCHEMA='gsettings set org.gnome.desktop.interface'
+$SCHEMA gtk-theme    "$THEME"
+$SCHEMA icon-theme   "$ICONS"
+$SCHEMA cursor-theme "$CURSOR"
+$SCHEMA font-name    "$FONT"
+$SCHEMA cursor-size  "$CURSOR_SIZE"
+
+swaymsg seat seat0 xcursor_theme "$CURSOR" "$CURSOR_SIZE" 2>/dev/null || true
