@@ -36,7 +36,7 @@ output * bg #1e2030 solid_color
 
 ### Input
 input "type:keyboard" {
-    xkb_layout fr,us
+    xkb_layout it,us
     xkb_options grp:alt_shift_toggle
     repeat_delay 600
     repeat_rate 25
