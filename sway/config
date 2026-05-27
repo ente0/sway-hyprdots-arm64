@@ -33,7 +33,7 @@ include ~/.config/sway/config.d/theme.conf
 output * bg #1e2030 solid_color
 # Scale up the whole UI so widgets/text aren't tiny on the Pi5 4K HDMI output.
 # Change to 1.0 if your monitor is already low-DPI.
-output * scale 1.5
+output * scale 0.9
 # Default monitor — adjust per setup
 # output HDMI-A-1 mode 1920x1080@60Hz position 0 0
 
