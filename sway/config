@@ -56,10 +56,6 @@ input "type:pointer" {
     accel_profile adaptive
 }
 
-### Default: all new windows float (user preference — non-tiling layout).
-for_window [app_id=".*"] floating enable
-for_window [class=".*"] floating enable
-
 ### Window rules — ported from Hyprland windowrules
 for_window [app_id="^(foot-float|kitty-float|term-float)$"] floating enable
 for_window [app_id="^(yad|nm-connection-editor|pavucontrol)$"] floating enable
