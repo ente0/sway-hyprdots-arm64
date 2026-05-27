@@ -1,43 +1,57 @@
 #!/bin/bash
+## Wallpaper picker — selects via yad then applies with swww.
 
-# Set the directory where the backgrounds are stored
 BACKGROUND_DIR="$HOME/.config/backgrounds"
 CURRENT_BACKGROUND_FILE="$HOME/.config/sway/.current_background"
 mkdir -p "$(dirname "$CURRENT_BACKGROUND_FILE")"
 
-# Get the list of backgrounds
-BACKGROUND_LIST=("$BACKGROUND_DIR"/*)
-
-# Prepare the background list for yad --list
-backgrounds_string=$(printf "%s\n" "${BACKGROUND_LIST[@]}")
-
-# Use Yad to display the list of backgrounds with a preview
-selected_background=$(echo "$backgrounds_string" | yad --list --title="Select a Background" \
-  --column="Backgrounds" --image-column="Preview:IMG" --separator=" " --height=400 --width=600 \
-  --button=Cancel:1 --button=Apply:0 --item-icon "${BACKGROUND_LIST[@]}" --image-on-top)
-
-# Capture the exit status of Yad
-response=$?
-
-# If the user clicks Cancel (exit status 1), exit the script
-if [ $response -eq 1 ]; then
-  exit 1
+# Ensure swww-daemon is running.
+if ! swww query >/dev/null 2>&1; then
+	swww-daemon &
+	for _ in 1 2 3 4 5 6 7 8 9 10; do
+		swww query >/dev/null 2>&1 && break
+		sleep 0.3
+	done
 fi
 
-# Trim any leading/trailing spaces and remove any extra formatting
-selected_background=$(echo "$selected_background" | sed 's/|.*//')
-
-# If no background is selected, exit
-if [ -z "$selected_background" ]; then
-  exit 1
+if [[ ! -d "$BACKGROUND_DIR" ]]; then
+	notify-send -u critical "Background" "No wallpaper directory at $BACKGROUND_DIR"
+	exit 1
 fi
 
-# Set the selected background and save it to the current background file
-echo "$selected_background" > "$CURRENT_BACKGROUND_FILE"
+mapfile -t BACKGROUND_LIST < <(find "$BACKGROUND_DIR" -maxdepth 3 -type f \
+	\( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \) | sort)
 
-# Apply the selected background using swww
-swww img $selected_background --transition-type grow --transition-fps 120 --transition-pos 'top-right' --transition-duration 2
+if [[ ${#BACKGROUND_LIST[@]} -eq 0 ]]; then
+	notify-send -u critical "Background" "No images found in $BACKGROUND_DIR"
+	exit 1
+fi
 
-# Send a notification with the new background name and an icon from the current background
-notify-send -i $selected_background "Background changed" "$(basename "$selected_background")"
+# Show a simple list (yad image-column preview only works with absolute paths + icon support)
+selected=$(printf '%s\n' "${BACKGROUND_LIST[@]}" | \
+	yad --list --title="Select Wallpaper" \
+		--column="Path" \
+		--height=500 --width=700 \
+		--button=Cancel:1 --button=Apply:0 \
+		--print-column=1 --no-headers 2>/dev/null | sed 's/|.*//')
 
+[[ $? -ne 0 || -z "$selected" ]] && exit 0
+
+# Strip trailing whitespace/pipe artifacts
+selected="${selected//[$'\t\r\n|']}"
+
+if [[ ! -f "$selected" ]]; then
+	notify-send -u critical "Background" "File not found: $selected"
+	exit 1
+fi
+
+if swww img "$selected" \
+	--transition-type grow \
+	--transition-fps 60 \
+	--transition-pos 'top-right' \
+	--transition-duration 2; then
+	echo "$selected" > "$CURRENT_BACKGROUND_FILE"
+	notify-send -i "$selected" "Wallpaper changed" "$(basename "$selected")"
+else
+	notify-send -u critical "Background" "swww failed to apply: $(basename "$selected")"
+fi

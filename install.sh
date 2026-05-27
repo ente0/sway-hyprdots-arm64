@@ -84,7 +84,7 @@ pac_install \
 	sway swaybg swayidle swaylock \
 	waybar \
 	foot kitty alacritty \
-	rofi wofi mako wlogout \
+	wofi mako \
 	grim slurp jq imagemagick wl-clipboard unzip curl \
 	brightnessctl pamixer pulsemixer playerctl \
 	pavucontrol \
@@ -123,9 +123,16 @@ if pacman -Qi swaylock &>/dev/null && ! pacman -Qi swaylock-effects &>/dev/null;
 	sudo pacman -Rdd --noconfirm swaylock
 fi
 
+# rofi-wayland provides rofi for Wayland; remove the X11 rofi first.
+if pacman -Qi rofi &>/dev/null && ! pacman -Qi rofi-wayland &>/dev/null; then
+	echo "[*] Removing X11 'rofi' to make room for 'rofi-wayland'"
+	sudo pacman -Rdd --noconfirm rofi
+fi
+
 aur_install \
 	swaylock-effects \
 	swww \
+	rofi-wayland \
 	rose-pine-cursor \
 	nwg-look \
 	wofi-emoji \
@@ -171,20 +178,37 @@ fi
 echo "[*] Installing SDDM greeter"
 pac_install sddm qt5-quickcontrols2 qt5-graphicaleffects qt5-svg
 
-THEME_NAME='catppuccin-macchiato-mauve'
-THEME_DIR="/usr/share/sddm/themes/$THEME_NAME"
-if [[ ! -d "$THEME_DIR" ]]; then
-	echo "[*] Fetching Catppuccin SDDM theme (macchiato/mauve)"
+# Detect any already-installed catppuccin macchiato theme variant.
+THEME_NAME=''
+for candidate in catppuccin-macchiato catppuccin-macchiato-mauve \
+                 catppuccin-Macchiato Catppuccin-Macchiato; do
+	[[ -d "/usr/share/sddm/themes/$candidate" ]] && { THEME_NAME="$candidate"; break; }
+done
+
+if [[ -z "$THEME_NAME" ]]; then
+	echo "[*] Installing Catppuccin SDDM theme (macchiato) via git clone"
 	tmp=$(mktemp -d)
-	# Official catppuccin/sddm release archive (architecture: any — pure QML).
-	if curl -fsSL -o "$tmp/theme.zip" \
-		"https://github.com/catppuccin/sddm/releases/latest/download/catppuccin-macchiato-mauve.zip"; then
+	THEME_NAME='catppuccin-macchiato'
+	THEME_DIR="/usr/share/sddm/themes/$THEME_NAME"
+	if git clone --depth=1 https://github.com/catppuccin/sddm.git "$tmp/sddm"; then
 		sudo mkdir -p /usr/share/sddm/themes
-		( cd "$tmp" && unzip -q theme.zip && sudo cp -r catppuccin-macchiato-mauve "$THEME_DIR" )
+		# Try both known repo layouts.
+		if [[ -d "$tmp/sddm/src/catppuccin-macchiato" ]]; then
+			sudo cp -r "$tmp/sddm/src/catppuccin-macchiato" "$THEME_DIR"
+		elif [[ -d "$tmp/sddm/catppuccin-macchiato" ]]; then
+			sudo cp -r "$tmp/sddm/catppuccin-macchiato" "$THEME_DIR"
+		else
+			# Fallback: copy the whole repo as the theme dir
+			sudo cp -r "$tmp/sddm" "$THEME_DIR"
+		fi
+		echo "  theme installed at $THEME_DIR"
 	else
-		echo "[!] Could not fetch Catppuccin SDDM theme; SDDM will use the default."
+		echo "[!] Could not clone catppuccin/sddm — SDDM will use the default theme."
+		THEME_NAME='breeze'
 	fi
 	rm -rf "$tmp"
+else
+	echo "[*] Catppuccin SDDM theme already present: $THEME_NAME"
 fi
 
 echo "[*] Writing /etc/sddm.conf.d/10-sway-hyprdots.conf"
@@ -192,8 +216,6 @@ sudo mkdir -p /etc/sddm.conf.d
 sudo tee /etc/sddm.conf.d/10-sway-hyprdots.conf >/dev/null <<EOF
 [Theme]
 Current=$THEME_NAME
-CursorTheme=BreezeX-RoséPine
-CursorSize=24
 
 [General]
 DisplayServer=wayland
