@@ -4,9 +4,8 @@
 ## Edited by yurihikari
 
 # Import Current Theme
-DIR="$HOME/.config/hypr"
-RASI="$DIR/rofi/powermenu.rasi"
-CNFR="$DIR/rofi/confirm.rasi"
+RASI="$HOME/.config/rofi/deathemonic/config/powermenu.rasi"
+CNFR="$HOME/.config/rofi/deathemonic/config/confirm.rasi"
 
 # Theme Elements
 prompt="`hostname` (`echo $XDG_CURRENT_DESKTOP`)"
@@ -78,11 +77,11 @@ confirm_run () {
 # Execute Command
 run_cmd() {
 	if [[ "$1" == '--opt1' ]]; then
-		sleep 0.5 && hyprlock
+		sleep 0.5 && ~/.config/sway/scripts/lockscreen
 	elif [[ "$1" == '--opt2' ]]; then
-		confirm_run 'hyprctl dispatch exit 0'
+		confirm_run 'swaymsg exit'
 	elif [[ "$1" == '--opt3' ]]; then
-		confirm_run 'mpc -q pause' 'pulsemixer --mute' "hyprlock" 'systemctl suspend'
+		confirm_run 'mpc -q pause' 'pulsemixer --mute' "~/.config/sway/scripts/lockscreen" 'systemctl suspend'
 	elif [[ "$1" == '--opt4' ]]; then
 		confirm_run 'systemctl hibernate'
 	elif [[ "$1" == '--opt5' ]]; then

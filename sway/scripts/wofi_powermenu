@@ -69,7 +69,7 @@ open_menu () {
 		$logout)
 			cdialog
 			if [[ "$?" == 0 ]]; then
-				hyprctl dispatch exit 0
+				swaymsg exit
 			else
 				exit
 			fi

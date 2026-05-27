@@ -4,8 +4,7 @@
 ## Edited for Garuda Linux by yurihikari
 
 # Import Current Theme
-DIR="$HOME/.config/hypr"
-RASI="$DIR/rofi/music.rasi"
+RASI="$HOME/.config/rofi/deathemonic/config/mpd.rasi"
 
 # Theme Elements
 status="`mpc status`"

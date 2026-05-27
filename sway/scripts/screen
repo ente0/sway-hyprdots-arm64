@@ -1,65 +1,42 @@
 #!/bin/bash
+## Display mode picker — Sway port (uses swaymsg)
 
-# Get list of monitors (names only)
-MONITORS=($(hyprctl monitors -j | jq -r '.[].name'))
-LAPTOP=${MONITORS[0]}  # Assume first is laptop; change if needed
+MONITORS=($(swaymsg -t get_outputs | jq -r '.[].name'))
+LAPTOP=${MONITORS[0]}
 EXTERNALS=("${MONITORS[@]:1}")
 
-# YAD dialog for mode selection
 MODE=$(yad --title="Display Mode" --width=450 --height=300 --center --list \
   --column="Mode" --column="Description" \
   "Normal" "Each screen is independent" \
-  "Presentation" "Mirror laptop to all" \
-  "Selective" "Mirror laptop to selected monitor" \
+  "Presentation" "Mirror primary to all" \
+  "Selective" "Mirror primary to selected monitor" \
   --button=Apply:0 --button=Cancel:1)
 
 [ $? -ne 0 ] && exit 0
-
 MODE=$(echo "$MODE" | awk -F'|' '{print $1}')
 
 set_normal_mode() {
-  hyprctl reload
-  # Disable all external monitors
-  for ext in "${EXTERNALS[@]}"; do
-    hyprctl keyword monitor "$ext,disable"
-  done
-
-  # Reset all monitors to normal mode
-  hyprctl reload
-  
-  # killall waybar
-  # ~/.config/sway/scripts/statusbar &
-
-  killall gjs
-  hyprpanel &
+	for ext in "${EXTERNALS[@]}"; do
+		swaymsg "output $ext enable"
+	done
 }
 
-
 set_presentation_mode() {
-  for ext in "${EXTERNALS[@]}"; do
-    hyprctl keyword monitor "$ext,highres@60,0x0,1.25,mirror,$LAPTOP"
-  done
-  hyprctl keyword monitor "$LAPTOP,highres@120,0x0,1.2"
+	for ext in "${EXTERNALS[@]}"; do
+		swaymsg "output $ext enable position 0 0"
+	done
 }
 
 set_selective_mode() {
-  # Let user pick which external monitor to mirror
-  CHOICE=$(yad --title="Select Monitor to Mirror" --width=450 --height=300 --center --list \
-    --column="Monitor" "${EXTERNALS[@]}" --button=Select:0 --button=Cancel:1)
-  [ $? -ne 0 ] && exit 0
-  TARGET=$(echo "$CHOICE" | awk -F'|' '{print $1}')
-  hyprctl keyword monitor "$ext,highres@60,0x0,1.25,mirror,$LAPTOP"
-  hyprctl keyword monitor "$LAPTOP,highres@120,0x0,1.2"
+	CHOICE=$(yad --title="Select Monitor to Mirror" --width=450 --height=300 --center --list \
+		--column="Monitor" "${EXTERNALS[@]}" --button=Select:0 --button=Cancel:1)
+	[ $? -ne 0 ] && exit 0
+	TARGET=$(echo "$CHOICE" | awk -F'|' '{print $1}')
+	swaymsg "output $TARGET enable position 0 0"
 }
 
 case "$MODE" in
-  Normal)
-    set_normal_mode
-    ;;
-  Presentation)
-    set_presentation_mode
-    ;;
-  Selective)
-    set_selective_mode
-    ;;
+	Normal)       set_normal_mode ;;
+	Presentation) set_presentation_mode ;;
+	Selective)    set_selective_mode ;;
 esac

@@ -31,13 +31,13 @@ elif [[ "$1" == '--hibernate' ]]; then
 		exit
     fi
 elif [[ "$1" == '--lock' ]]; then
-	~/.config/hypr/scripts/lockscreen
+	~/.config/sway/scripts/lockscreen
 elif [[ "$1" == '--suspend' ]]; then
 	cdialog
 	if [[ "$?" == 0 ]]; then
 		mpc -q pause
 		pulsemixer --mute
-		~/.config/hypr/scripts/lockscreen
+		~/.config/sway/scripts/lockscreen
 		systemctl suspend
     else
 		exit
@@ -45,7 +45,7 @@ elif [[ "$1" == '--suspend' ]]; then
 elif [[ "$1" == '--logout' ]]; then
 	cdialog
 	if [[ "$?" == 0 ]]; then
-		hyprctl dispatch exit 0
+		swaymsg exit
     else
 		exit
     fi

@@ -1,50 +1,44 @@
 #!/usr/bin/env bash
+## Sway autostart — ported from HyDE/Hyprland
 
-## Copyright (C) 2020-2023 Aditya Shakya <adi1090x@gmail.com>
-##
-## Autostart Programs
-## Edited for Garuda Linux by yurihikari
-
-# Kill already running process
-_ps=(waybar mako swayidle swww-daemon)
+# Kill already running processes
+_ps=(waybar mako swayidle swww-daemon nm-applet)
 for _prs in "${_ps[@]}"; do
-	if [[ `pidof ${_prs}` ]]; then
-		killall -9 ${_prs}
+	if pidof "${_prs}" >/dev/null 2>&1; then
+		killall -9 "${_prs}"
 	fi
 done
 
-# Start gnome keyring
-exec gnome-keyring-daemon --daemonize --start --components=gpg,pkcs11,secrets,ssh &
+# Gnome keyring (must run before polkit/secret-consumers)
+eval "$(gnome-keyring-daemon --start --components=gpg,pkcs11,secrets,ssh)"
+export SSH_AUTH_SOCK
 
 # Polkit agent
-# if [[ ! `pidof xfce-polkit` ]]; then
-# 	/usr/lib/xfce-polkit/xfce-polkit &
-# fi
-exec /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1 &
+/usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1 &
 
-pipewire &
-wireplumber &
-# Set wallpaper
-# swaybg --output '*' --mode fill --image ~/.config/backgrounds/march7.jpg &
+# Wallpaper daemon
 swww-daemon &
+sleep 0.3
+# Restore last wallpaper if any
+if [[ -d "$HOME/.config/backgrounds" ]]; then
+	wall=$(find "$HOME/.config/backgrounds" -type f \( -iname '*.jpg' -o -iname '*.png' -o -iname '*.jpeg' \) | shuf -n1)
+	[[ -n "$wall" ]] && swww img "$wall" --transition-type any &
+fi
 
-# Apply themes
+# GTK themes
 ~/.config/sway/scripts/gtkthemes &
 
-# Lauch notification daemon (mako) Enable if not using AGS
+# Notification daemon (mako)
 ~/.config/sway/scripts/notifications &
 
-# Lauch statusbar (waybar) Disable if using AGS
+# Status bar (waybar)
 ~/.config/sway/scripts/statusbar &
 
-# Start network manager applet
+# Network applet
 nm-applet --indicator &
 
-# Start tuxedo-control-center Let it commented if not using Tuxedo
-#tuxedo-control-center --tray &
+# MPD
+mpd 2>/dev/null &
 
-# Start mpd
-exec mpd &
-
-# Idle/lock daemon — replaces hypridle
+# Idle / lock daemon (replaces hypridle)
 swayidle -w -C "$HOME/.config/sway/swayidle.conf" &

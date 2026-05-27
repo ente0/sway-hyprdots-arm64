@@ -3,8 +3,7 @@
 ## Copyright (C) 2020-2023 Aditya Shakya <adi1090x@gmail.com>
 
 # Import Current Theme
-DIR="$HOME/.config/hypr"
-RASI="$DIR/rofi/screenshot.rasi"
+RASI="$HOME/.config/rofi/deathemonic/config/screenshot.rasi"
 
 # Theme Elements
 prompt='Screenshot'
@@ -91,9 +90,8 @@ shot10 () {
 }
 
 shotwin () {
-	w_pos=`hyprctl activewindow | grep 'at:' | cut -d':' -f2 | tr -d ' ' | tail -n1`
-	w_size=`hyprctl activewindow | grep 'size:' | cut -d':' -f2 | tr -d ' ' | tail -n1 | sed s/,/x/g`
-	cd ${dir} && sleep 0.5 && grim -g "$w_pos $w_size" - | tee "$file" | wl-copy
+	geom=$(swaymsg -t get_tree | jq -r '..|select(.focused?==true)|.rect|"\(.x),\(.y) \(.width)x\(.height)"')
+	cd ${dir} && sleep 0.5 && grim -g "$geom" - | tee "$file" | wl-copy
 	notify_view
 }
 

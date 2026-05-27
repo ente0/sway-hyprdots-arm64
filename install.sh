@@ -110,7 +110,18 @@ echo "[*] Installing AUR packages via yay"
 # Build order matters: scenefx0.4 is a swayfx dep.
 aur_build_ignorearch wlogout
 aur_build_ignorearch scenefx0.4
+# swayfx provides sway → remove the base package first to avoid a conflict.
+if pacman -Qi sway &>/dev/null && ! pacman -Qi swayfx &>/dev/null; then
+	echo "[*] Removing 'sway' to make room for 'swayfx' (provides sway)"
+	sudo pacman -Rdd --noconfirm sway
+fi
 aur_build_ignorearch swayfx
+
+# swaylock-effects provides swaylock → remove base package first.
+if pacman -Qi swaylock &>/dev/null && ! pacman -Qi swaylock-effects &>/dev/null; then
+	echo "[*] Removing 'swaylock' to make room for 'swaylock-effects' (provides swaylock)"
+	sudo pacman -Rdd --noconfirm swaylock
+fi
 
 aur_install \
 	swaylock-effects \
@@ -150,6 +161,38 @@ Comment=Sway with effects — HyDE-ported config
 Exec=sway
 Type=Application
 EOF
+fi
+
+# --- Autostart on TTY1 ----------------------------------------------------
+# Append a sway-launch snippet to the user's shell profile so sway starts
+# automatically right after a login on tty1 (no display manager needed).
+echo "[*] Setting up sway autostart on tty1"
+SNIPPET_MARK='# >>> sway autostart (sway-hyprdots-arm64) >>>'
+SNIPPET_END='# <<< sway autostart (sway-hyprdots-arm64) <<<'
+read -r -d '' SNIPPET <<'EOF' || true
+# >>> sway autostart (sway-hyprdots-arm64) >>>
+if [ -z "$WAYLAND_DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
+    export XDG_CURRENT_DESKTOP=sway
+    export XDG_SESSION_TYPE=wayland
+    export MOZ_ENABLE_WAYLAND=1
+    export QT_QPA_PLATFORM=wayland
+    export _JAVA_AWT_WM_NONREPARENTING=1
+    exec sway
+fi
+# <<< sway autostart (sway-hyprdots-arm64) <<<
+EOF
+
+for rc in "$HOME/.zprofile" "$HOME/.bash_profile" "$HOME/.profile"; do
+	# Pick the first one that already exists, else create ~/.bash_profile.
+	[[ -f "$rc" ]] && target="$rc" && break
+done
+target="${target:-$HOME/.bash_profile}"
+touch "$target"
+if ! grep -qF "$SNIPPET_MARK" "$target"; then
+	echo "$SNIPPET" >> "$target"
+	echo "    added autostart block to $target"
+else
+	echo "    autostart block already present in $target"
 fi
 
 echo
