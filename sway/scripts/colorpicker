@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Color picker for Sway — hyprpicker has no Sway/ARM equivalent.
+# Uses grim + slurp + ImageMagick (see PORTING_NOTES.md).
+
+color=$(grim -g "$(slurp -b 20262CCC -p)" -t ppm - \
+  | convert - -format '%[pixel:p{0,0}]' txt:- \
+  | tail -n1 | cut -d' ' -f4)
+image=/tmp/${color}.png
+
+if [[ "$color" ]]; then
+	echo -n "$color" | wl-copy
+	convert -size 48x48 xc:"$color" "$image"
+	notify-send -h string:x-canonical-private-synchronous:sys-notify-picker \
+		-u low -i "$image" "$color, copied to clipboard."
+fi

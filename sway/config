@@ -1,0 +1,91 @@
+# Sway main config — ported from HyDE/Hyprland
+# Target: SwayFX on EndeavourOS ARM (Raspberry Pi 5)
+# See PORTING_NOTES.md for the Hyprland → Sway mapping.
+
+### Variables
+set $mod Mod4
+set $alt Mod1
+set $term ~/.config/sway/scripts/terminal
+set $menu ~/.config/sway/scripts/rofi_launcher
+set $runner ~/.config/sway/scripts/rofi_runner
+set $musicmenu ~/.config/sway/scripts/rofi_music
+set $netmenu ~/.config/sway/scripts/rofi_network
+set $powermenu ~/.config/sway/scripts/rofi_powermenu
+set $screenshotmenu ~/.config/sway/scripts/rofi_screenshot
+set $screenshot ~/.config/sway/scripts/screenshot
+set $volume ~/.config/sway/scripts/volume
+set $backlight ~/.config/sway/scripts/brightness
+set $lockscreen ~/.config/sway/scripts/lockscreen
+set $colorpicker ~/.config/sway/scripts/colorpicker
+set $emojipicker wofi-emoji
+set $files thunar
+set $editor geany
+set $browser brave
+set $cheatsheet foot --app-id='foot-float' --config="$HOME/.config/sway/foot/foot.ini" -t cheatsheet -e micro ~/.config/sway/cheatsheet.md
+set $background_swap ~/.config/sway/scripts/background
+set $screen_mode ~/.config/sway/scripts/screen
+set $notifycmd notify-send -h string:x-canonical-private-synchronous:sway-cfg -u low
+
+### Theme include
+include ~/.config/sway/config.d/theme.conf
+
+### Output
+output * bg #1e2030 solid_color
+# Default monitor — adjust per setup
+# output HDMI-A-1 mode 1920x1080@60Hz position 0 0
+
+### Input
+input "type:keyboard" {
+    xkb_layout fr,us
+    xkb_options grp:alt_shift_toggle
+    repeat_delay 600
+    repeat_rate 25
+}
+input "type:touchpad" {
+    natural_scroll enabled
+    tap enabled
+    dwt enabled
+    pointer_accel 0.5
+    accel_profile adaptive
+}
+input "type:pointer" {
+    pointer_accel 0.5
+    accel_profile adaptive
+}
+
+### Window rules — ported from Hyprland windowrules
+for_window [app_id="^(foot-float|kitty-float|term-float)$"] floating enable
+for_window [app_id="^(yad|nm-connection-editor|pavucontrol)$"] floating enable
+for_window [app_id="^(kvantummanager|qt5ct)$"] floating enable
+for_window [class="^(xfce-polkit)$"] floating enable
+for_window [app_id="^(feh|Viewnior|Gpicview|Gimp|MPlayer)$"] floating enable
+for_window [class="^(VirtualBox Manager|qemu|Qemu-system-x86_64)$"] floating enable
+for_window [title="^File Operation Progress$"] floating enable
+for_window [title="^Confirm to replace files$"] floating enable
+for_window [app_id="^(kitty-full|foot-full)$"] fullscreen enable
+for_window [app_id="^Viewnior$"] floating enable, resize set 60 ppt 64 ppt, move position center
+for_window [app_id="^Waydroid$"] fullscreen enable
+# Opacity is approximated via SwayFX `opacity` command (no-op on vanilla sway)
+for_window [app_id="^(code|kitty|vesktop|youtube-music|thunar|zed|nemo)$"] opacity 0.93
+
+### Keybindings
+include ~/.config/sway/config.d/keybindings.conf
+
+### Mouse
+floating_modifier $mod normal
+bindsym --whole-window $mod+button1 move
+bindsym --whole-window $mod+button2 resize
+
+### Lid
+bindswitch --reload --locked lid:on exec $lockscreen
+
+### SwayFX-only — ignored on vanilla sway
+# blur enable
+# blur_passes 3
+# blur_radius 5
+# corner_radius 10
+# shadows enable
+# default_dim_inactive 0.1
+
+### Autostart
+exec ~/.config/sway/scripts/startup

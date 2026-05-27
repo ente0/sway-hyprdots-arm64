@@ -23,9 +23,13 @@
     "pulseaudio",
     "custom/keyboard-layout",
     "temperature",
+    "cpu",
     "memory",
+    "disk",
+    "custom/pacman",
     "battery",
     "network",
+    "idle_inhibitor",
     "custom/power"
   ],
 
@@ -203,9 +207,8 @@
     "format": "{icon} {percent: >3}%",
     "format-icons": ["", ""],
     // "on-scroll-down": "brightnessctl -c backlight set 5%-",
-    "on-scroll-down": "light -A 5 && light -G | cut -d'.' -f1 > $SWAYSOCK.wob",
-    // "on-scroll-up": "brightnessctl -c backlight set +5%"
-    "on-scroll-up": "light -U 5 && light -G | cut -d'.' -f1 > $SWAYSOCK.wob"
+    "on-scroll-up": "brightnessctl -c backlight set +5%",
+    "on-scroll-down": "brightnessctl -c backlight set 5%-"
   },
   "battery": {
     "states": {
@@ -244,8 +247,8 @@
       "default": ["", ""]
     },
     "on-click": "pavucontrol",
-    "on-scroll-up": "pamixer -ui 2 && pamixer --get-volume > $SWAYSOCK.wob",
-    "on-scroll-down": "pamixer -ud 2 && pamixer --get-volume > $SWAYSOCK.wob"
+    "on-scroll-up": "pamixer -ui 2",
+    "on-scroll-down": "pamixer -ud 2"
   },
   "custom/pacman": {
     "format": " {}",
@@ -272,7 +275,12 @@
   },
   "custom/launcher": {
     "format": " ",
-    "on-click": "exec nwg-drawer -c 7 -is 70 -spacing 23",
+    "on-click": "~/.config/sway/scripts/rofi_launcher",
     "tooltip": false
+  },
+  "disk": {
+    "interval": 60,
+    "format": " {percentage_used}%",
+    "path": "/"
   }
 }

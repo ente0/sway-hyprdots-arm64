@@ -1,185 +1,142 @@
 #!/bin/bash
-# Make an ascii art to welcome the user to the script
-echo "###############################################################################################################"
-echo "Welcome to the Garuda Sway Config installation script"
-echo "This script will install all the dependencies required and copy the files from garuda-sway-config to ~/.config"
-echo "Please make sure you have an active internet connection before running this script"
-echo "Press Ctrl+C to exit the script"
-echo "Press Enter to continue"
-echo "###############################################################################################################"
-read
+# sway-hyprdots-arm64 installer
+# Target: EndeavourOS ARM (Raspberry Pi 5 — aarch64)
+# See PORTING_NOTES.md and CHANGELOG_ARM64.md for full porting details.
 
-# Get this script directory 
+set -e
+
+echo "###############################################################################################################"
+echo "# sway-hyprdots-arm64 installer"
+echo "# Target  : EndeavourOS ARM on Raspberry Pi 5 (aarch64)"
+echo "# WM      : SwayFX (Sway + blur + rounded corners)"
+echo "# Helpers : pacman + yay (AUR)"
+echo "###############################################################################################################"
+
+# --- Sanity checks --------------------------------------------------------
+ARCH="$(uname -m)"
+if [[ "$ARCH" != "aarch64" && "$ARCH" != "arm64" ]]; then
+	echo "[!] Detected arch '$ARCH'. This fork targets aarch64 (Raspberry Pi 5)."
+	read -rp "Continue anyway? (y/N) " ans
+	[[ "$ans" =~ ^[Yy]$ ]] || exit 1
+fi
+
+if [[ ! -f /etc/os-release ]] || ! grep -qi 'endeavouros' /etc/os-release; then
+	echo "[!] /etc/os-release does not look like EndeavourOS. This script is tuned for EndeavourOS ARM."
+	read -rp "Continue anyway? (y/N) " ans
+	[[ "$ans" =~ ^[Yy]$ ]] || exit 1
+fi
+
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
-# Get distro name
-distro=$(cat /etc/os-release | grep -w "NAME" | cut -d "=" -f2 | tr -d '"')
-
-# Ask the user if they want to update the system
-echo "It is recommended to update your system first. Do you want to update the system? (y/n)"
-read answer
-if [ "$answer" != "${answer#[Yy]}" ] ;then
-  # If the distro is Garuda Linux, update the system using update command, else use pacman
-  echo "Updating system"
-  if [ "$distro" == "Garuda Linux" ]; then
-    echo "Detected Garuda Linux, updating system..."
-    update
-  else
-    echo "Not Garuda Linux, updating system using pacman..."
-    sudo pacman -Syu --noconfirm
-  fi
-else
-  echo "Skipping system update..."
+echo
+read -rp "Update the system first (recommended)? (Y/n) " ans
+if [[ ! "$ans" =~ ^[Nn]$ ]]; then
+	sudo pacman -Syu --noconfirm
 fi
 
-echo "Installing paru"
-# Install paru
-sudo pacman -S paru --noconfirm
-echo "paru installed successfully"
+# --- yay ------------------------------------------------------------------
+if ! command -v yay >/dev/null 2>&1; then
+	echo "[*] Installing yay from source (no prebuilt aarch64 in extra)."
+	sudo pacman -S --needed --noconfirm base-devel git go
+	tmp=$(mktemp -d)
+	git clone https://aur.archlinux.org/yay.git "$tmp/yay"
+	(cd "$tmp/yay" && makepkg -si --noconfirm)
+	rm -rf "$tmp"
+fi
 
-# Function to check if a package is installed, if not, install it using paru
-function install {
-  if ! pacman -Qi $1 &> /dev/null; then
-    echo "Installing $1..."
-    paru -S $1 --noconfirm
-  else
-    echo "$1 is already installed. Skipping..."
-  fi
+# --- Helpers --------------------------------------------------------------
+pac_install() {
+	for p in "$@"; do
+		if ! pacman -Qi "$p" &>/dev/null; then
+			echo "  pacman: $p"
+			sudo pacman -S --needed --noconfirm "$p"
+		fi
+	done
 }
 
-# Add chaotic AUR keys and repository if not added, else skip
-echo "Adding chaotic AUR keys and repository"
-if ! pacman-key --list-keys chaotic-aur &> /dev/null; then
-  echo "Adding chaotic AUR keys and repository"
-  sudo pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com
-  sudo pacman-key --lsign-key 3056513887B78AEB
-  sudo pacman -U 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst'
-  sudo pacman -U 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst'
-  echo "Chaotic AUR keys added successfully"
-else 
-  echo "Chaotic AUR keys and repository already added. Skipping..."
+aur_install() {
+	for p in "$@"; do
+		if ! pacman -Qi "$p" &>/dev/null; then
+			echo "  yay   : $p"
+			yay -S --needed --noconfirm "$p"
+		fi
+	done
+}
+
+# --- Official repos -------------------------------------------------------
+# Everything here is available in [extra]/[community] for aarch64 via the
+# Arch Linux ARM repos that EndeavourOS ARM inherits.
+echo "[*] Installing core packages from pacman"
+pac_install \
+	sway swaybg swayidle swaylock \
+	waybar \
+	foot kitty alacritty \
+	rofi wofi mako wlogout \
+	grim slurp jq imagemagick wl-clipboard \
+	brightnessctl pamixer pulsemixer playerctl \
+	pavucontrol \
+	pipewire wireplumber pipewire-pulse pipewire-alsa \
+	networkmanager network-manager-applet \
+	bluez bluez-utils blueberry \
+	thunar geany \
+	xdg-user-dirs xdg-desktop-portal-wlr \
+	gnome-keyring polkit-gnome \
+	mpd mpc cava btop \
+	fastfetch fish micro \
+	ttf-jetbrains-mono-nerd ttf-font-awesome noto-fonts \
+	qt5-wayland qt6-wayland \
+	gtk3 gtk4
+
+# --- AUR ------------------------------------------------------------------
+# SwayFX = blur + rounded corners (your non-negotiable).
+# rose-pine-cursor (XCursor) replaces rose-pine-hyprcursor.
+# wofi-emoji and rofi-emoji for the emoji picker keybind.
+# NOTE: hyprpicker dropped on purpose — see PORTING_NOTES.md.
+echo "[*] Installing AUR packages via yay"
+aur_install \
+	swayfx \
+	swaylock-effects \
+	swww \
+	rose-pine-cursor \
+	nwg-look \
+	wofi-emoji \
+	oh-my-posh-bin
+
+# --- Deploy configs -------------------------------------------------------
+echo "[*] Deploying configs to ~/.config"
+mkdir -p "$HOME/.config"
+rsync -av \
+	--exclude='.git' --exclude='.gitignore' \
+	--exclude='LICENSE' --exclude='README.md' \
+	--exclude='PORTING_NOTES.md' --exclude='CHANGELOG_ARM64.md' \
+	--exclude='install.sh' \
+	"$DIR"/ "$HOME/.config/"
+
+# btop theme
+mkdir -p "$HOME/.config/btop"
+grep -q 'color_theme' "$HOME/.config/btop/btop.conf" 2>/dev/null || \
+	echo "color_theme = $HOME/.config/btop/themes/catppuccin_macchiato.theme" >> "$HOME/.config/btop/btop.conf"
+
+# Ensure scripts executable
+chmod +x "$HOME/.config/sway/scripts/"* 2>/dev/null || true
+chmod +x "$HOME/.config/waybar/scripts/"* 2>/dev/null || true
+
+# --- Session file ---------------------------------------------------------
+# Use SwayFX binary if present, otherwise plain sway.
+if pacman -Qi swayfx &>/dev/null && [[ ! -f /usr/share/wayland-sessions/swayfx.desktop ]]; then
+	echo "[*] Installing SwayFX wayland session file"
+	sudo tee /usr/share/wayland-sessions/swayfx.desktop >/dev/null <<EOF
+[Desktop Entry]
+Name=SwayFX (HyDE-ARM64)
+Comment=Sway with effects — HyDE-ported config
+Exec=sway
+Type=Application
+EOF
 fi
 
-# Add chaotic AUR
-if ! grep -q "^\[chaotic-aur\]" /etc/pacman.conf; then
-  echo "[chaotic-aur]
-Include = /etc/pacman.d/chaotic-mirrorlist" | sudo tee -a /etc/pacman.conf
-  sudo pacman -Sy
-  echo "Chaotic AUR repository added/updated successfully"
-fi
-
-# Install dependencies using the install function
-# Make an array of all the dependencies (swaylock-effects rofi-lbonn-wayland waybar-git neofetch cava foot hyprland-git mpd mpc sweet-cursor-theme-git ttf-font-awesome nerd-fonts hyprpicker pipewire wireplumber fish)
-dependencies=(
-  yad
-  fastfetch 
-  cava-git
-  foot 
-  mpd 
-  mpc 
-  ttf-font-awesome 
-  nerd-fonts 
-  hyprpicker 
-  pipewire 
-  wireplumber 
-  fish
-  pavucontrol
-  most
-  rose-pine-cursor
-  rose-pine-hyprcursor
-  bluez
-  bluez-utils
-  grimblast
-  gpu-screen-recorder
-  btop
-  networkmanager
-  matugen
-  wl-clipboard
-  swww
-  dart-sass
-  brightnessctl
-  gnome-bluetooth-3.0
-  micro
-  blueberry
-  oh-my-posh
-  wofi-emoji
-  kitty
-)
-
-important_dependencies=(
-  rofi-wayland 
-  hyprland
-  waybar
-  hyprlock
-  ags-hyprpanel-git
-)
-
-# Highly probable that those packages are already installed, but just in case
-conflicting_packages=(
-  rofi
-  hyprland-git
-  aylurs-gtk-shell
-)
-
-echo "Installing dependencies"
-# Loop through the array and install all the dependencies
-for i in "${dependencies[@]}"; do
-  install $i
-done
-
-curl -fsSL https://bun.sh/install | bash && \
-  ln -s $HOME/.bun/bin/bun /usr/local/bin/bun
-
-echo "Dependencies installed successfully"
-
-echo "Uninstalling conflicting packages"
-for i in "${conflicting_packages[@]}"; do
-  # ask user if they want to uninstall the conflicting packages
-  echo "Do you want to uninstall $i? (y/n)"
-  read answer
-  if [ "$answer" != "${answer#[Yy]}" ] ;then
-    echo "Removing $i..."
-    sudo pacman -Rdd $i --noconfirm
-  else
-    echo "Skipping $i..."
-  fi
-done
-echo "Conflicting packages uninstalled successfully"
-
-echo "Installing important dependencies"
-echo "You may be asked to replace some packages. Press y to replace them"
-# Loop through the array and install all the dependencies
-for i in "${important_dependencies[@]}"; do
-  paru -S $i
-done
-echo "Important Dependencies installed successfully"
-
-# Uninstall wlsunset if installed (yes, i hate it)
-echo "Uninstalling wlsunset"
-if pacman -Qi wlsunset &> /dev/null; then
-  sudo pacman -R wlsunset --noconfirm
-fi
-echo "wlsunset uninstalled successfully"
-
-# Place the files from garuda-sway-config (where this script is located) inside the .config folder
-echo "Copying files from garuda-hyprdots to ~/.config"
-# copy but ignore the .git folder, LICENSE, .gitignore and README.md
-rsync -av $DIR/* ~/.config --exclude='.git' --exclude='LICENSE' --exclude='.gitignore' --exclude='README.md' 
-echo "Files copied successfully"
-
-# Edit some config files
-# Adding btop theme
-echo "color_theme = $HOME/.config/btop/themes/catppuccin_macchiato.theme" >> $HOME/.config/btop/btop.conf
-
-# Ask if the user wants to reboot the system now or not
-echo "Do you want to reboot the system now? (y/n)"
-read answer
-if [ "$answer" != "${answer#[Yy]}" ] ;then
-  echo "Installation completed successfully. Rebooting in 5 seconds..."
-  # Wait for 2s before rebooting 
-  sleep 5
-  sudo reboot now
-else
-  echo "Installation completed successfully. Please reboot your system to apply the changes."
-fi
-
+echo
+echo "[*] Done."
+echo "Log out and pick the 'SwayFX (HyDE-ARM64)' session from your display manager,"
+echo "or run 'sway' from a TTY."
+read -rp "Reboot now? (y/N) " ans
+[[ "$ans" =~ ^[Yy]$ ]] && sudo reboot now
