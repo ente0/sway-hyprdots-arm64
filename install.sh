@@ -63,14 +63,16 @@ aur_install() {
 	done
 }
 
-# wlogout declares arch=('x86_64') but compiles fine on aarch64.
-install_wlogout_arm() {
-	if pacman -Qi wlogout &>/dev/null; then return; fi
-	echo "  [arm64 patch] building wlogout from AUR source..."
+# Build an AUR pkg whose PKGBUILD wrongly excludes aarch64.
+# $1 = pkgname (must match the AUR repo name).
+aur_build_ignorearch() {
+	local pkg="$1"
+	if pacman -Qi "$pkg" &>/dev/null; then return; fi
+	echo "  [arm64 patch] building $pkg from AUR source..."
 	local tmp; tmp=$(mktemp -d)
-	git clone https://aur.archlinux.org/wlogout.git "$tmp/wlogout"
-	sed -i "s/arch=('x86_64')/arch=('x86_64' 'aarch64')/" "$tmp/wlogout/PKGBUILD"
-	(cd "$tmp/wlogout" && makepkg -si --noconfirm --ignorearch)
+	git clone "https://aur.archlinux.org/${pkg}.git" "$tmp/$pkg"
+	sed -i "s/arch=('x86_64')/arch=('x86_64' 'aarch64')/" "$tmp/$pkg/PKGBUILD" || true
+	(cd "$tmp/$pkg" && makepkg -si --noconfirm --ignorearch)
 	rm -rf "$tmp"
 }
 
@@ -104,10 +106,13 @@ pac_install \
 # wofi-emoji and rofi-emoji for the emoji picker keybind.
 # NOTE: hyprpicker dropped on purpose — see PORTING_NOTES.md.
 echo "[*] Installing AUR packages via yay"
-install_wlogout_arm
+# Packages whose PKGBUILD restricts to x86_64 but code is portable.
+# Build order matters: scenefx0.4 is a swayfx dep.
+aur_build_ignorearch wlogout
+aur_build_ignorearch scenefx0.4
+aur_build_ignorearch swayfx
 
 aur_install \
-	swayfx \
 	swaylock-effects \
 	swww \
 	rose-pine-cursor \

@@ -46,21 +46,29 @@ The script:
 
 Reboot, pick **SwayFX (HyDE-ARM64)** from your DM (or `sway` from a TTY).
 
-## Keybinds (excerpt)
+## Keybinds — macOS-style (Super = ⌘)
 
 | Key | Action |
 |---|---|
+| `Super+Space` / `Super+D` | rofi launcher (Spotlight) |
+| `Super+W` / `Super+Q` | close window |
+| `Super+H` / `Super+M` | hide to scratchpad (minimize) |
+| `Super+Shift+H` / `` Super+` `` | unhide last scratchpad |
+| `Super+F` | fullscreen toggle |
+| `Super+Shift+F` | floating toggle |
+| `Super+Tab` / `Super+Shift+Tab` | focus next / prev |
+| `Ctrl+Left` / `Ctrl+Right` | workspace prev / next |
+| `Ctrl+Up` | window switcher (Mission Control) |
+| `Super+1..0` / `Super+Shift+1..0` | workspaces / move-to (numeric + French AZERTY) |
 | `Super+Return` | Terminal (kitty) |
-| `Super+D` | rofi launcher |
-| `Super+X` | rofi power menu |
 | `Super+P` | color picker (grim+slurp) |
 | `Super+E` | emoji picker (wofi-emoji) |
+| `Super+X` | rofi power menu |
 | `Super+Shift+B` | wallpaper switch (yad + swww) |
 | `Super+Shift+T` | swap waybar theme |
 | `Super+Shift+I` | open cheatsheet in floating foot |
 | `Print` / `Super+Print` | full / area screenshot |
 | `Ctrl+Alt+L` | lockscreen |
-| `Super+1..0` / `Super+Shift+1..0` | workspaces / move-to (numeric **and** French AZERTY) |
 
 Full list in [sway/config.d/keybindings.conf](sway/config.d/keybindings.conf).
 

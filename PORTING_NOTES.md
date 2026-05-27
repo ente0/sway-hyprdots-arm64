@@ -45,7 +45,7 @@ This fork ports [yurihikari/garuda-hyprdots](https://github.com/yurihikari/garud
 | `light` | replaced by **`brightnessctl`** | aarch64-friendly, no setuid. |
 | `grimblast` | replaced by inline `grim + slurp` | One less dep. |
 | `blueberry` / `gnome-bluetooth` | replaced by **`blueman`** | gnome-bluetooth is x86_64-only; blueman is in [extra] for aarch64. |
-| `wlogout` | built via `makepkg --ignorearch` | arch=('x86_64') in PKGBUILD is arbitrary — code compiles fine on aarch64. |
+| `wlogout`, `swayfx`, `scenefx0.4` | built via `makepkg --ignorearch` | arch=('x86_64') in PKGBUILD is arbitrary — code compiles fine on aarch64. Use the `aur_build_ignorearch` helper in `install.sh`. |
 | `bun` (curl install) | dropped | Only needed by ags-hyprpanel. |
 
 ## Repository layout after port
