@@ -17,6 +17,8 @@ export SSH_AUTH_SOCK
 /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1 &
 
 # Wallpaper daemon — use swww if available, else swaybg fallback.
+# Restores last wallpaper from ~/.config/sway/.current_background so sessions
+# don't get a random image every time. Only picks at random on first run.
 if command -v swww-daemon >/dev/null 2>&1; then
 	swww-daemon &
 	(
@@ -24,11 +26,21 @@ if command -v swww-daemon >/dev/null 2>&1; then
 			swww query >/dev/null 2>&1 && break
 			sleep 0.3
 		done
-		for d in "$HOME/.config/backgrounds" "$HOME/.config/sway/wallpapers" "$HOME/Pictures/Wallpapers"; do
-			[[ -d "$d" ]] || continue
-			wall=$(find "$d" -maxdepth 3 -type f \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \) 2>/dev/null | shuf -n1)
-			[[ -n "$wall" ]] && swww img "$wall" --transition-type any && break
-		done
+		CURRENT_BG_FILE="$HOME/.config/sway/.current_background"
+		wall=""
+		if [[ -f "$CURRENT_BG_FILE" ]]; then
+			saved=$(<"$CURRENT_BG_FILE")
+			[[ -f "$saved" ]] && wall="$saved"
+		fi
+		if [[ -z "$wall" ]]; then
+			for d in "$HOME/.config/backgrounds" "$HOME/.config/sway/wallpapers" "$HOME/Pictures/Wallpapers"; do
+				[[ -d "$d" ]] || continue
+				wall=$(find "$d" -maxdepth 3 -type f \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \) 2>/dev/null | shuf -n1)
+				[[ -n "$wall" ]] && break
+			done
+			[[ -n "$wall" ]] && echo "$wall" > "$CURRENT_BG_FILE"
+		fi
+		[[ -n "$wall" ]] && swww img "$wall" --transition-type none
 	) &
 else
 	# swww not installed — use swaybg with a solid colour until swww is set up.
