@@ -183,7 +183,9 @@ pac_install sddm qt5-quickcontrols2 qt5-graphicaleffects qt5-svg \
 # proper catppuccin/sddm path is settled. Ships Main.qml at root, no build.
 THEME_NAME='sddm-astronaut-theme'
 THEME_DIR="/usr/share/sddm/themes/$THEME_NAME"
-ASTRONAUT_VARIANT='cat_waves_mocha'
+# Preference chain — first existing one wins.
+# 'cat_waves_mocha' was requested but isn't upstream; falls back to purple_leaves.
+ASTRONAUT_VARIANTS=(cat_waves_mocha catppuccin-macchiato purple_leaves japanese_aesthetic astronaut)
 
 for old in /usr/share/sddm/themes/catppuccin-macchiato \
            /usr/share/sddm/themes/catppuccin-macchiato-mauve; do
@@ -206,47 +208,59 @@ if [[ ! -f "$THEME_DIR/Main.qml" ]]; then
 	fi
 fi
 if [[ -f "$THEME_DIR/Main.qml" ]]; then
-	variant_file=$(find "$THEME_DIR/Themes" -maxdepth 1 \
-		\( -iname "${ASTRONAUT_VARIANT}.conf" \
-		-o -iname "$(echo "$ASTRONAUT_VARIANT" | tr '_' '-').conf" \) 2>/dev/null | head -1)
+	variant_file=""
+	for v in "${ASTRONAUT_VARIANTS[@]}"; do
+		f=$(find "$THEME_DIR/Themes" -maxdepth 1 \
+			\( -iname "${v}.conf" -o -iname "$(echo "$v" | tr '_' '-').conf" \) 2>/dev/null | head -1)
+		if [[ -n "$f" ]]; then
+			variant_file="$f"
+			break
+		fi
+	done
 	if [[ -n "$variant_file" ]]; then
 		sudo cp "$variant_file" "$THEME_DIR/theme.conf.user"
 		echo "  variant: $(basename "$variant_file")"
 	else
-		echo "[!] Variant '$ASTRONAUT_VARIANT' not found. Available:"
+		echo "[!] No preferred variant found. Available:"
 		ls "$THEME_DIR/Themes" 2>/dev/null | sed 's/^/    /'
 	fi
 fi
 
-# --- catppuccin/sddm (4 flavors, installed alongside astronaut) --------------
-echo "[*] Installing official Catppuccin SDDM themes (latte/frappe/macchiato/mocha)"
+# --- catppuccin SDDM (try multiple known repos) ------------------------------
+# The official catppuccin/sddm repo is a palette/template — it does NOT ship
+# usable SDDM themes. Try a few known forks that actually contain Main.qml.
+echo "[*] Installing Catppuccin SDDM themes (try known forks)"
 catppuccin_tmp=$(mktemp -d)
-if git clone --depth=1 https://github.com/catppuccin/sddm.git "$catppuccin_tmp/repo"; then
-	for flavor in latte frappe macchiato mocha; do
-		src=""
-		for cand in \
-			"$catppuccin_tmp/repo/src/catppuccin-$flavor" \
-			"$catppuccin_tmp/repo/catppuccin-$flavor"; do
-			[[ -f "$cand/Main.qml" ]] && { src="$cand"; break; }
-		done
-		# Last resort: any dir named catppuccin-<flavor> with Main.qml
-		if [[ -z "$src" ]]; then
-			found=$(find "$catppuccin_tmp/repo" -type d -name "catppuccin-$flavor" 2>/dev/null \
-				| while read -r d; do [[ -f "$d/Main.qml" ]] && echo "$d" && break; done)
-			[[ -n "$found" ]] && src="$found"
-		fi
-		if [[ -n "$src" ]]; then
-			sudo rm -rf "/usr/share/sddm/themes/catppuccin-$flavor"
-			sudo cp -r "$src" "/usr/share/sddm/themes/catppuccin-$flavor"
-			echo "  installed catppuccin-$flavor"
-		else
-			echo "  [!] catppuccin-$flavor not found in repo"
-		fi
+catppuccin_repos=(
+	'https://github.com/khaneliman/sddm-catppuccin.git'
+	'https://github.com/catppuccin/sddm.git'
+)
+for url in "${catppuccin_repos[@]}"; do
+	echo "  trying $url"
+	if ! git clone --depth=1 "$url" "$catppuccin_tmp/repo" 2>/dev/null; then
+		continue
+	fi
+	# Find every directory containing a Main.qml — that's a usable theme.
+	mapfile -t maincandidates < <(find "$catppuccin_tmp/repo" -type f -name 'Main.qml' 2>/dev/null)
+	echo "    found ${#maincandidates[@]} Main.qml file(s)"
+	for q in "${maincandidates[@]}"; do
+		dir=$(dirname "$q")
+		name=$(basename "$dir")
+		# Normalize: ensure name starts with catppuccin-
+		[[ "$name" == catppuccin-* ]] || name="catppuccin-$name"
+		sudo rm -rf "/usr/share/sddm/themes/$name"
+		sudo cp -r "$dir" "/usr/share/sddm/themes/$name"
+		echo "    installed: $name"
 	done
-else
-	echo "[!] Could not clone catppuccin/sddm — skipping official flavors."
-fi
+	rm -rf "$catppuccin_tmp/repo"
+	# If we installed anything, stop trying other repos.
+	if ls /usr/share/sddm/themes/ | grep -q '^catppuccin-'; then
+		break
+	fi
+done
 rm -rf "$catppuccin_tmp"
+ls /usr/share/sddm/themes/ | grep '^catppuccin-' >/dev/null \
+	|| echo "[!] No Catppuccin SDDM theme installed. Astronaut variant is still active."
 
 echo "[*] Writing /etc/sddm.conf.d/10-sway-hyprdots.conf"
 sudo mkdir -p /etc/sddm.conf.d
