@@ -72,7 +72,7 @@ aur_build_ignorearch() {
 	local tmp; tmp=$(mktemp -d)
 	git clone "https://aur.archlinux.org/${pkg}.git" "$tmp/$pkg"
 	sed -i "s/arch=('x86_64')/arch=('x86_64' 'aarch64')/" "$tmp/$pkg/PKGBUILD" || true
-	(cd "$tmp/$pkg" && makepkg -si --noconfirm --ignorearch)
+	(cd "$tmp/$pkg" && makepkg -si --noconfirm --ignorearch --skippgpcheck)
 	rm -rf "$tmp"
 }
 

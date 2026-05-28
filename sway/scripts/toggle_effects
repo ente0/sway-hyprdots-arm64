@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+## Toggle SwayFX visual effects (blur, shadows, corners, dim).
+## Persists to config.d/effects.conf so state survives a sway reload/restart.
+
+EFFECTS_FILE="$HOME/.config/sway/config.d/effects.conf"
+NOTIFY='notify-send -h string:x-canonical-private-synchronous:sway-fx -u low'
+
+# Detect current state by reading the marker line.
+if grep -q '^# State: ON' "$EFFECTS_FILE" 2>/dev/null; then
+	NEW_STATE='OFF'
+else
+	NEW_STATE='ON'
+fi
+
+if [[ "$NEW_STATE" == 'ON' ]]; then
+	cat > "$EFFECTS_FILE" <<'EOF'
+# SwayFX visual effects — toggled by ~/.config/sway/scripts/toggle_effects.
+# State: ON
+
+blur enable
+blur_passes 2
+blur_radius 5
+corner_radius 10
+shadows enable
+shadow_blur_radius 20
+shadow_color #00000080
+default_dim_inactive 0.08
+layer_effects 'waybar'        blur enable; shadows enable
+layer_effects 'rofi'          blur enable; shadows enable
+layer_effects 'launcher'      blur enable; shadows enable
+layer_effects 'notifications' blur enable; shadows enable
+EOF
+	# Apply at runtime — no reload needed.
+	swaymsg blur enable >/dev/null
+	swaymsg blur_passes 2 >/dev/null
+	swaymsg blur_radius 5 >/dev/null
+	swaymsg corner_radius 10 >/dev/null
+	swaymsg shadows enable >/dev/null
+	swaymsg default_dim_inactive 0.08 >/dev/null
+	$NOTIFY 'SwayFX effects' 'Enabled'
+else
+	cat > "$EFFECTS_FILE" <<'EOF'
+# SwayFX visual effects — toggled by ~/.config/sway/scripts/toggle_effects.
+# State: OFF
+
+blur disable
+shadows disable
+corner_radius 0
+default_dim_inactive 0.0
+EOF
+	swaymsg blur disable >/dev/null
+	swaymsg shadows disable >/dev/null
+	swaymsg corner_radius 0 >/dev/null
+	swaymsg default_dim_inactive 0.0 >/dev/null
+	$NOTIFY 'SwayFX effects' 'Disabled'
+fi

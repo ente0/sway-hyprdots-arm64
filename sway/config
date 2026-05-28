@@ -82,20 +82,17 @@ bindsym --whole-window $mod+button2 resize
 ### Lid
 bindswitch --reload --locked lid:on exec $lockscreen
 
-### SwayFX-only — silently ignored on vanilla sway
-blur enable
-blur_passes 2
-blur_radius 5
-corner_radius 10
-shadows enable
-shadow_blur_radius 20
-shadow_color #00000080
-default_dim_inactive 0.08
-# Per-app blur tuning
-layer_effects 'waybar'   blur enable; shadows enable
-layer_effects 'rofi'     blur enable; shadows enable
-layer_effects 'launcher' blur enable; shadows enable
-layer_effects 'notifications' blur enable; shadows enable
+### Gaps — show wallpaper around tiled windows so single window ≠ fullscreen
+gaps inner 8
+gaps outer 4
+smart_gaps off
+default_border pixel 2
+default_floating_border pixel 2
+titlebar_padding 4 2
+
+### SwayFX effects — disabled by default for Pi5 performance.
+### Toggle on/off with `~/.config/sway/scripts/toggle_effects`.
+include ~/.config/sway/config.d/effects.conf
 
 ### Autostart
 exec ~/.config/sway/scripts/startup
