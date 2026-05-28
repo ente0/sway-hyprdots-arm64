@@ -179,12 +179,13 @@ echo "[*] Installing SDDM greeter"
 pac_install sddm qt5-quickcontrols2 qt5-graphicaleffects qt5-svg \
 	ttf-jetbrains-mono ttf-roboto
 
-THEME_NAME='catppuccin-macchiato'
+# Temporary: use sddm-astronaut-theme (catppuccin-macchiato variant) until the
+# proper catppuccin/sddm path is settled. Ships Main.qml at root, no build.
+THEME_NAME='sddm-astronaut-theme'
 THEME_DIR="/usr/share/sddm/themes/$THEME_NAME"
+ASTRONAUT_VARIANT='catppuccin-macchiato'
 
-# Remove any broken/leftover theme dirs from previous install iterations.
-for old in /usr/share/sddm/themes/sddm-astronaut-theme \
-           /usr/share/sddm/themes/catppuccin-macchiato \
+for old in /usr/share/sddm/themes/catppuccin-macchiato \
            /usr/share/sddm/themes/catppuccin-macchiato-mauve; do
 	if [[ -d "$old" && ! -f "$old/Main.qml" ]]; then
 		echo "[*] Removing broken theme dir: $old"
@@ -193,35 +194,17 @@ for old in /usr/share/sddm/themes/sddm-astronaut-theme \
 done
 
 if [[ ! -f "$THEME_DIR/Main.qml" ]]; then
-	echo "[*] Installing Catppuccin SDDM theme (macchiato)"
+	echo "[*] Installing sddm-astronaut-theme (catppuccin-macchiato variant)"
+	sudo rm -rf "$THEME_DIR"
 	sudo mkdir -p /usr/share/sddm/themes
-	tmp=$(mktemp -d)
-	if git clone --depth=1 https://github.com/catppuccin/sddm.git "$tmp/catppuccin-sddm"; then
-		# The repo has theme dirs directly at root (catppuccin-macchiato/)
-		# or in a src/ subdirectory — try both.
-		if [[ -f "$tmp/catppuccin-sddm/catppuccin-macchiato/Main.qml" ]]; then
-			sudo cp -r "$tmp/catppuccin-sddm/catppuccin-macchiato" "$THEME_DIR"
-		elif [[ -f "$tmp/catppuccin-sddm/src/catppuccin-macchiato/Main.qml" ]]; then
-			sudo cp -r "$tmp/catppuccin-sddm/src/catppuccin-macchiato" "$THEME_DIR"
-		else
-			# Fallback: find any directory containing Main.qml and macchiato in name
-			found=$(find "$tmp/catppuccin-sddm" -name 'Main.qml' | grep -i macchiato | head -1)
-			if [[ -n "$found" ]]; then
-				sudo cp -r "$(dirname "$found")" "$THEME_DIR"
-			else
-				echo "[!] Could not locate catppuccin-macchiato/Main.qml in the repo."
-				echo "    Repo contents:"
-				find "$tmp/catppuccin-sddm" -name 'Main.qml' | head -10
-				THEME_NAME='breeze'
-			fi
+	if sudo git clone --depth=1 \
+		https://github.com/Keyitdev/sddm-astronaut-theme.git "$THEME_DIR"; then
+		if [[ -f "$THEME_DIR/Themes/${ASTRONAUT_VARIANT}.conf" ]]; then
+			sudo cp "$THEME_DIR/Themes/${ASTRONAUT_VARIANT}.conf" "$THEME_DIR/theme.conf.user"
 		fi
-		rm -rf "$tmp"
-		if [[ "$THEME_NAME" != 'breeze' ]]; then
-			echo "  installed at $THEME_DIR"
-		fi
+		echo "  installed at $THEME_DIR"
 	else
-		rm -rf "$tmp"
-		echo "[!] Could not clone catppuccin/sddm — SDDM will use default."
+		echo "[!] Could not install sddm-astronaut-theme — SDDM will use default."
 		THEME_NAME='breeze'
 	fi
 fi
