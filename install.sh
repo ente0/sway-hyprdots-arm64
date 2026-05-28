@@ -193,28 +193,60 @@ for old in /usr/share/sddm/themes/catppuccin-macchiato \
 	fi
 done
 
+sudo mkdir -p /usr/share/sddm/themes
+
+# --- sddm-astronaut-theme (active default, variant cat_waves_mocha) ----------
 if [[ ! -f "$THEME_DIR/Main.qml" ]]; then
-	echo "[*] Installing sddm-astronaut-theme (catppuccin-macchiato variant)"
+	echo "[*] Installing sddm-astronaut-theme"
 	sudo rm -rf "$THEME_DIR"
-	sudo mkdir -p /usr/share/sddm/themes
-	if sudo git clone --depth=1 \
+	if ! sudo git clone --depth=1 \
 		https://github.com/Keyitdev/sddm-astronaut-theme.git "$THEME_DIR"; then
-		# Pick variant — try exact name, then any case/separator variation.
-		variant_file=$(find "$THEME_DIR/Themes" -maxdepth 1 -iname "${ASTRONAUT_VARIANT}.conf" -o \
-			-iname "$(echo "$ASTRONAUT_VARIANT" | tr '_' '-').conf" 2>/dev/null | head -1)
-		if [[ -n "$variant_file" ]]; then
-			sudo cp "$variant_file" "$THEME_DIR/theme.conf.user"
-			echo "  variant: $(basename "$variant_file")"
-		else
-			echo "[!] Variant '$ASTRONAUT_VARIANT' not found. Available:"
-			ls "$THEME_DIR/Themes" 2>/dev/null | sed 's/^/    /'
-		fi
-		echo "  installed at $THEME_DIR"
-	else
-		echo "[!] Could not install sddm-astronaut-theme — SDDM will use default."
+		echo "[!] Could not clone sddm-astronaut-theme — falling back to breeze."
 		THEME_NAME='breeze'
 	fi
 fi
+if [[ -f "$THEME_DIR/Main.qml" ]]; then
+	variant_file=$(find "$THEME_DIR/Themes" -maxdepth 1 \
+		\( -iname "${ASTRONAUT_VARIANT}.conf" \
+		-o -iname "$(echo "$ASTRONAUT_VARIANT" | tr '_' '-').conf" \) 2>/dev/null | head -1)
+	if [[ -n "$variant_file" ]]; then
+		sudo cp "$variant_file" "$THEME_DIR/theme.conf.user"
+		echo "  variant: $(basename "$variant_file")"
+	else
+		echo "[!] Variant '$ASTRONAUT_VARIANT' not found. Available:"
+		ls "$THEME_DIR/Themes" 2>/dev/null | sed 's/^/    /'
+	fi
+fi
+
+# --- catppuccin/sddm (4 flavors, installed alongside astronaut) --------------
+echo "[*] Installing official Catppuccin SDDM themes (latte/frappe/macchiato/mocha)"
+catppuccin_tmp=$(mktemp -d)
+if git clone --depth=1 https://github.com/catppuccin/sddm.git "$catppuccin_tmp/repo"; then
+	for flavor in latte frappe macchiato mocha; do
+		src=""
+		for cand in \
+			"$catppuccin_tmp/repo/src/catppuccin-$flavor" \
+			"$catppuccin_tmp/repo/catppuccin-$flavor"; do
+			[[ -f "$cand/Main.qml" ]] && { src="$cand"; break; }
+		done
+		# Last resort: any dir named catppuccin-<flavor> with Main.qml
+		if [[ -z "$src" ]]; then
+			found=$(find "$catppuccin_tmp/repo" -type d -name "catppuccin-$flavor" 2>/dev/null \
+				| while read -r d; do [[ -f "$d/Main.qml" ]] && echo "$d" && break; done)
+			[[ -n "$found" ]] && src="$found"
+		fi
+		if [[ -n "$src" ]]; then
+			sudo rm -rf "/usr/share/sddm/themes/catppuccin-$flavor"
+			sudo cp -r "$src" "/usr/share/sddm/themes/catppuccin-$flavor"
+			echo "  installed catppuccin-$flavor"
+		else
+			echo "  [!] catppuccin-$flavor not found in repo"
+		fi
+	done
+else
+	echo "[!] Could not clone catppuccin/sddm — skipping official flavors."
+fi
+rm -rf "$catppuccin_tmp"
 
 echo "[*] Writing /etc/sddm.conf.d/10-sway-hyprdots.conf"
 sudo mkdir -p /etc/sddm.conf.d
