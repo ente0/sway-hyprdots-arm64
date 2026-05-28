@@ -183,7 +183,7 @@ pac_install sddm qt5-quickcontrols2 qt5-graphicaleffects qt5-svg \
 # proper catppuccin/sddm path is settled. Ships Main.qml at root, no build.
 THEME_NAME='sddm-astronaut-theme'
 THEME_DIR="/usr/share/sddm/themes/$THEME_NAME"
-ASTRONAUT_VARIANT='catppuccin-macchiato'
+ASTRONAUT_VARIANT='cat_waves_mocha'
 
 for old in /usr/share/sddm/themes/catppuccin-macchiato \
            /usr/share/sddm/themes/catppuccin-macchiato-mauve; do
@@ -199,8 +199,15 @@ if [[ ! -f "$THEME_DIR/Main.qml" ]]; then
 	sudo mkdir -p /usr/share/sddm/themes
 	if sudo git clone --depth=1 \
 		https://github.com/Keyitdev/sddm-astronaut-theme.git "$THEME_DIR"; then
-		if [[ -f "$THEME_DIR/Themes/${ASTRONAUT_VARIANT}.conf" ]]; then
-			sudo cp "$THEME_DIR/Themes/${ASTRONAUT_VARIANT}.conf" "$THEME_DIR/theme.conf.user"
+		# Pick variant — try exact name, then any case/separator variation.
+		variant_file=$(find "$THEME_DIR/Themes" -maxdepth 1 -iname "${ASTRONAUT_VARIANT}.conf" -o \
+			-iname "$(echo "$ASTRONAUT_VARIANT" | tr '_' '-').conf" 2>/dev/null | head -1)
+		if [[ -n "$variant_file" ]]; then
+			sudo cp "$variant_file" "$THEME_DIR/theme.conf.user"
+			echo "  variant: $(basename "$variant_file")"
+		else
+			echo "[!] Variant '$ASTRONAUT_VARIANT' not found. Available:"
+			ls "$THEME_DIR/Themes" 2>/dev/null | sed 's/^/    /'
 		fi
 		echo "  installed at $THEME_DIR"
 	else
